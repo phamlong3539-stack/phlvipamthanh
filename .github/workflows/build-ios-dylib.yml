@@ -1,0 +1,77 @@
+name: Build iOS arm64 PHLVoiceEngine.dylib
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "Makefile"
+      - ".github/workflows/build-ios-dylib.yml"
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Tạo bản Release đính kèm trực tiếp file PHLVoiceEngine.dylib"
+        required: false
+        default: "false"
+        type: boolean
+      release_tag:
+        description: "Tên tag nếu tạo Release (ví dụ: v1.0.0)"
+        required: false
+        default: "v1.0.0"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-dylib-arm64:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Check Xcode & iPhoneOS SDK
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-path
+          xcrun --sdk iphoneos -f clang++
+
+      - name: Build PHLVoiceEngine.dylib (arm64)
+        env:
+          VOICE_SIGNING_SECRET: ${{ secrets.VOICE_SIGNING_SECRET }}
+        run: |
+          make clean
+          if [ -n "$VOICE_SIGNING_SECRET" ]; then
+            echo "Building with obfuscated HMAC-SHA256 verification key..."
+            make SIGNING_SECRET="$VOICE_SIGNING_SECRET"
+          else
+            echo "VOICE_SIGNING_SECRET not set -> Building in Zero-Secret Keychain Seal mode..."
+            make
+          fi
+
+      - name: Verify arm64 binary & dependencies
+        run: |
+          make verify
+          ls -lh build/PHLVoiceEngine.dylib
+          file build/PHLVoiceEngine.dylib
+
+      - name: Upload PHLVoiceEngine.dylib as GitHub Actions Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PHLVoiceEngine-arm64-dylib
+          path: build/PHLVoiceEngine.dylib
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create GitHub Release with direct .dylib download (optional)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          name: PHL Voice & Music Engine ${{ inputs.release_tag }}
+          files: build/PHLVoiceEngine.dylib
+          draft: false
+          prerelease: false
