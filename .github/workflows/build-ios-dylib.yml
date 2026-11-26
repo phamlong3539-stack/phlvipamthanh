@@ -38,12 +38,31 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Normalize repo layout & check required files
+      - name: Check Xcode & iPhoneOS SDK
         run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-path
+          xcrun --sdk iphoneos -f clang++
+
+      - name: Normalize repo layout & collect all source files
+        run: |
+          set -e
           mkdir -p src scripts
           for ext in h hpp mm; do
             for f in *.$ext src/src/*.$ext ios-dylib/src/*.$ext; do
               if [ -f "$f" ]; then
                 cp -f "$f" "src/$(basename "$f")"
+
+          echo "=== Quet toan bo repo de tim file nguon ==="
+          # Tim tat ca file .h, .hpp, .mm o moi cap do thu muc (ngoai tru .git)
+          find . -not -path '*/.git/*' \( -name "*.h" -o -name "*.hpp" -o -name "*.mm" \) | while read -r fpath; do
+            fname=$(basename "$fpath")
+            # Chi copy cac file PHL* (tranh copy file header he thong)
+            if echo "$fname" | grep -qE '^PHL'; then
+              dest="src/$fname"
+              if [ ! -f "$dest" ] || [ "$fpath" -nt "$dest" ]; then
+                echo "  Copy: $fpath -> $dest"
+                cp -f "$fpath" "$dest"
               fi
             done
           done
@@ -54,22 +73,58 @@ jobs:
           done
           if [ ! -f Makefile ] && [ -f ios-dylib/Makefile ]; then
             cp -f ios-dylib/Makefile Makefile
+
+          # Tim gen_obfuscated_key.py o moi noi
+          find . -not -path '*/.git/*' -name "gen_obfuscated_key.py" | head -1 | while read -r fpath; do
+            echo "  Copy: $fpath -> scripts/gen_obfuscated_key.py"
+            cp -f "$fpath" "scripts/gen_obfuscated_key.py"
+          done
+
+          # Tim Makefile neu chua co o goc
+          if [ ! -f Makefile ]; then
+            find . -not -path '*/.git/*' -name "Makefile" | head -1 | while read -r fpath; do
+              echo "  Copy: $fpath -> ./Makefile"
+              cp -f "$fpath" ./Makefile
+            done
           fi
           echo "=== Files in src/ ==="
+
+          echo ""
+          echo "=== Noi dung thu muc src/ sau khi chuan hoa ==="
           ls -la src/
           echo "=== Files in scripts/ ==="
+          echo ""
+          echo "=== Noi dung thu muc scripts/ ==="
           ls -la scripts/
+          echo ""
+
+          # Kiem tra cac file bat buoc
           REQUIRED="PHLVoiceDSP.hpp PHLSyncManager.h PHLSyncManager.mm PHLMusicManager.h PHLMusicManager.mm PHLOverlayUI.h PHLOverlayUI.mm PHLVoiceMain.mm"
           MISSING=0
           for req in $REQUIRED; do
             if [ ! -f "src/$req" ]; then
               echo "::error::Thieu file src/$req! Hay upload file $req len repo."
+              echo "::error::THIEU FILE: src/$req"
               MISSING=1
+            else
+              echo "  OK: src/$req ($(wc -c < "src/$req") bytes)"
             fi
           done
+
           if [ "$MISSING" -ne 0 ]; then
             echo "=== Danh sach file hien co trong repo ==="
             find . -maxdepth 3 -not -path '*/.git/*'
+            echo ""
+            echo "=== TOAN BO FILE TRONG REPO (de debug) ==="
+            find . -not -path '*/.git/*' -type f | sort
+            echo ""
+            echo "HUONG DAN: Vao repo GitHub -> Add file -> Upload files"
+            echo "Upload CAC FILE SAU tu may tinh len repo (bat ky thu muc nao cung duoc):"
+            for req in $REQUIRED; do
+              if [ ! -f "src/$req" ]; then
+                echo "  - $req"
+              fi
+            done
             exit 1
           fi
 
@@ -78,11 +133,14 @@ jobs:
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-path
           xcrun --sdk iphoneos -f clang++
+          echo ""
+          echo "=== TAT CA FILE NGUON DA SAN SANG ==="
 
       - name: Build PHLVoiceEngine.dylib (arm64)
         env:
           VOICE_SIGNING_SECRET: ${{ secrets.VOICE_SIGNING_SECRET }}
         run: |
+          set -e
           make clean
           if [ -n "$VOICE_SIGNING_SECRET" ]; then
             echo "Building with obfuscated HMAC-SHA256 verification key..."
@@ -97,6 +155,8 @@ jobs:
           make verify
           ls -lh build/PHLVoiceEngine.dylib
           file build/PHLVoiceEngine.dylib
+          otool -l build/PHLVoiceEngine.dylib | grep -A3 LC_ID_DYLIB || true
+          lipo -info build/PHLVoiceEngine.dylib
 
       - name: Upload PHLVoiceEngine.dylib as GitHub Actions Artifact
         uses: actions/upload-artifact@v4
