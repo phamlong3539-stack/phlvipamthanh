@@ -7,6 +7,10 @@ on:
     paths:
       - "src/**"
       - "scripts/**"
+      - "*.mm"
+      - "*.h"
+      - "*.hpp"
+      - "*.py"
       - "Makefile"
       - ".github/workflows/build-ios-dylib.yml"
   workflow_dispatch:
@@ -32,6 +36,42 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
+
+      - name: Normalize repo layout & check required files
+        run: |
+          mkdir -p src scripts
+          for ext in h hpp mm; do
+            for f in *.$ext src/src/*.$ext ios-dylib/src/*.$ext; do
+              if [ -f "$f" ]; then
+                cp -f "$f" "src/$(basename "$f")"
+              fi
+            done
+          done
+          for f in gen_obfuscated_key.py ios-dylib/scripts/gen_obfuscated_key.py; do
+            if [ -f "$f" ]; then
+              cp -f "$f" "scripts/gen_obfuscated_key.py"
+            fi
+          done
+          if [ ! -f Makefile ] && [ -f ios-dylib/Makefile ]; then
+            cp -f ios-dylib/Makefile Makefile
+          fi
+          echo "=== Files in src/ ==="
+          ls -la src/
+          echo "=== Files in scripts/ ==="
+          ls -la scripts/
+          REQUIRED="PHLVoiceDSP.hpp PHLSyncManager.h PHLSyncManager.mm PHLMusicManager.h PHLMusicManager.mm PHLOverlayUI.h PHLOverlayUI.mm PHLVoiceMain.mm"
+          MISSING=0
+          for req in $REQUIRED; do
+            if [ ! -f "src/$req" ]; then
+              echo "::error::Thieu file src/$req! Hay upload file $req len repo."
+              MISSING=1
+            fi
+          done
+          if [ "$MISSING" -ne 0 ]; then
+            echo "=== Danh sach file hien co trong repo ==="
+            find . -maxdepth 3 -not -path '*/.git/*'
+            exit 1
+          fi
 
       - name: Check Xcode & iPhoneOS SDK
         run: |
