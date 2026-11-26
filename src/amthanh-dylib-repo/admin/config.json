@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "engine_name": "PHL Voice & Music Engine",
+  "global_lock": false,
+  "maintenance": {
+    "enabled": false,
+    "message": "Hệ thống đang bảo trì nâng cấp bộ lọc âm thanh. Vui lòng thử lại sau."
+  },
+  "sync": {
+    "poll_interval_seconds": 15
+  },
+  "baseline_speaker": {
+    "f0_hz": 145.0
+  },
+  "music": {
+    "repo_owner": "phamlong3539-stack",
+    "repo_name": "phl-music-data",
+    "branch": "main",
+    "playlist_path": "playlist.json",
+    "global_lock": false,
+    "locked_track_ids": [],
+    "featured_tracks": [
+      {
+        "id": "nhac_chill_phong_cho",
+        "title": "Nhạc Chill Phòng Chờ",
+        "artist": "PHL Audio",
+        "file_path": "tracks/nhac_chill_phong_cho.mp3",
+        "locked": false
+      }
+    ]
+  },
+  "voices": [
+    {
+      "id": "nu_ngot_ngao",
+      "name": "Nữ Ngọt Ngào",
+      "description": "Giọng nữ ấm áp, trong trẻo và tự nhiên khi giao tiếp trong game.",
+      "category": "Nữ",
+      "source_audio": "admin/source_audio/nu_ngot_ngao.wav",
+      "locked": false,
+      "naturalness": 0.92,
+      "dsp_overrides": {}
+    },
+    {
+      "id": "nam_tram_am",
+      "name": "Nam Trầm Ấm",
+      "description": "Giọng nam trầm dày, uy lực, giảm tạp âm nền hiệu quả.",
+      "category": "Nam",
+      "source_audio": "admin/source_audio/nam_tram_am.wav",
+      "locked": false,
+      "naturalness": 0.90,
+      "dsp_overrides": {}
+    },
+    {
+      "id": "anime_de_thuong",
+      "name": "Anime Dễ Thương",
+      "description": "Giọng cao sáng, nhí nhảnh, giữ độ rõ phụ âm khi nói nhanh.",
+      "category": "Nhân vật",
+      "source_audio": "admin/source_audio/anime_de_thuong.wav",
+      "locked": false,
+      "naturalness": 0.85,
+      "dsp_overrides": {}
+    },
+    {
+      "id": "phat_thanh_vien",
+      "name": "Phát Thanh Viên",
+      "description": "Âm sắc rõ nét, cân bằng giọng nói, nén động ổn định không bị vỡ tiếng.",
+      "category": "Chuyên nghiệp",
+      "source_audio": "admin/source_audio/phat_thanh_vien.wav",
+      "locked": true,
+      "naturalness": 0.95,
+      "dsp_overrides": {}
+    }
+  ]
+}
